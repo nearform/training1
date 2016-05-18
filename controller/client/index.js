@@ -1,23 +1,30 @@
 'use strict'
-
 const through = require('through2')
 const reconnect = require('reconnect-net')
 const eos = require('end-of-stream')
 
 module.exports = function (port) {
   const stream = through()
-  
+  let connection
+  const client = reconnect(c => {
+    if (connection) {
+      connection.unpipe(stream).unpipe(connection)
+    }
+    connection = c
+    c.pipe(stream).pipe(c)
+  }).connect(port || 8124)
+
+  client.on('error', (err) => {
+    if (err.code === 'ECONNREFUSED') {
+      console.error(err.port + ' not open, is server running?')
+      return
+    }
+    throw err
+  })
+
+  eos(stream, () => client.disconnect())
+
+  stream.client = client
 
   return stream
 }
-
-// tips 
-// use `reconnect-net` (see http://npm.im/reconnect-net and http://npm.im/reconnect)
-// `stream` is a proxy stream for the connection, the connection can be
-// be replaced at any time (due to a reconnect)
-// we will need to unpipe the old connection, and pipe a new connection 
-// to the stream
-// the pipe line should be circular connection => stream => connection 
-// this ensures our "proxy stream" gets both reads and writes from the
-// current connection
-// use end-of-stream to disconnect the client on stream end
