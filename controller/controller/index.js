@@ -8,28 +8,31 @@ function makeController(heading, speed, backled) {
   backled = typeof backled === 'boolean' ? backled : true
 
   return through((cmd, enc, cb) => {
-	cmd.state = {heading, speed, backled}
 
     switch ( cmd.name ) {
 		case 'toggle-backled':
-			cmd.state.backled = ! backled;
+			backled = ! backled
 			break;
 		case 'right':
-			cmd.state.heading += 15;
+			heading = (heading += 15) % 360
 			break;
 		case 'left':
-			cmd.state.heading -= 15;
+			heading = (heading -= 15) % 360
 			break;
 		case '180':
-			cmd.state.heading += 180;
+			heading = (heading += 180) % 360
 			break;
 		case 'slower':
-			cmd.state.speed -= 0.1;
+			speed -= 0.1
+			speed = speed < 0.1 ? 0.1 : speed
 			break;
 		case 'faster':
-			cmd.state.speed += 0.1;
+			speed += 0.1
+			speed = speed > 1.0 ? 1.0 : speed
 			break;
 	}
+
+	cmd.state = {heading, speed, backled}
 
 	cb(null, cmd)
   })
